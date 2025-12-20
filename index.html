@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .entry-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .entry-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .entry-input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        .submit-btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #1d4ed8;
+        }
+        
+        .submit-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .entries-container {
+            margin-top: 20px;
+        }
+        
+        .entry-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .entry-item:hover {
+            background-color: #f1f5f9;
+            transform: translateX(5px);
+        }
+        
+        .entry-item span {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #dc2626;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .delete-btn:hover {
+            background-color: #fee2e2;
+        }
+        
+        .error {
+            color: #dc2626;
+            padding: 10px;
+            background-color: #fee2e2;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #fecaca;
+        }
+        
+        .info-box {
+            background-color: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 30px;
+            font-size: 14px;
+        }
+        
+        .info-box h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        
+        .counter {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HTMX + Go Beispiel</h1>
+        
+        <form class="entry-form" 
+              hx-post="/add-entry"
+              hx-target="#entries-container"
+              hx-swap="beforeend"
+              _="on htmx:afterRequest reset() me">
+            
+            <input type="text" 
+                   name="entry" 
+                   class="entry-input" 
+                   placeholder="Geben Sie einen Eintrag ein..."
+                   required
+                   autofocus>
+            
+            <button type="submit" class="submit-btn">
+                Hinzufügen
+            </button>
+        </form>
+        
+        <div class="counter" id="entry-count">
+            {{if .Items}}
+                {{len .Items}} Einträge
+            {{else}}
+                Noch keine Einträge
+            {{end}}
+        </div>
+        
+        <div id="entries-container" class="entries-container">
+            {{range $index, $item := .Items}}
+            <div class="entry-item" id="entry-{{$index}}">
+                <span>{{$item}}</span>
+                <button class="delete-btn" 
+                        hx-delete="/delete-entry/{{$index}}"
+                        hx-target="#entry-{{$index}}"
+                        hx-swap="outerHTML">
+                    ✕
+                </button>
+            </div>
+            {{end}}
+        </div>
+        
+        <div class="info-box">
+            <h3>Wie funktioniert's?</h3>
+            <p>1. Text eingeben und auf "Hinzufügen" klicken</p>
+            <p>2. HTMX sendet eine POST-Anfrage an das Go-Backend</p>
+            <p>3. Go verarbeitet die Anfrage und sendet HTML zurück</p>
+            <p>4. HTMX fügt den neuen Eintrag ohne Seitenneuladung ein</p>
+            <p>5. Klicken Sie auf ✕ um Einträge zu löschen (DELETE-Anfrage)</p>
+        </div>
+    </div>
+    
+    <!-- Hyperscript für dynamische Zählfunktion -->
+    <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+    <script>
+        // Aktualisiert den Zähler nach jedem Hinzufügen/Löschen
+        document.addEventListener('htmx:afterSwap', function(evt) {
+            updateCounter();
+        });
+        
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            updateCounter();
+        });
+        
+        function updateCounter() {
+            const entries = document.querySelectorAll('.entry-item');
+            const counter = document.getElementById('entry-count');
+            if (entries.length === 0) {
+                counter.textContent = 'Noch keine Einträge';
+            } else {
+                counter.textContent = `${entries.length} Einträge`;
+            }
+        }
+    </script>
+</body>
+</html>
