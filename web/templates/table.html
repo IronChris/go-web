@@ -1,0 +1,16 @@
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Elo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>${{.DEC25}}</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
