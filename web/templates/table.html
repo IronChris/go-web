@@ -1,16 +1,28 @@
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Elo</th>
-        </tr>
-    </thead>
-    <tbody>
-        {{range .}}
-        <tr>
-            <td>{{.Name}}</td>
-            <td>${{.DEC25}}</td>
-        </tr>
-        {{end}}
-    </tbody>
-</table>
+{{range .Players}}
+<tr>
+    <td>{{.Bday}}</td>
+    <td>{{.Name}}</td>
+    <td>{{.DEC25}}</td>
+    <td>{{.Fed}}</td>
+    <td>{{.Tit}}</td>
+</tr>
+{{else}}
+<tr>
+    <td colspan="5">No players found.</td>
+</tr>
+{{end}}
+
+{{/* The magic pagination row */}}
+{{if .Players}} {{/* Only run this if Players is not nil */}}
+    {{if eq (len .Players) 20}}
+    <tr>
+        <td colspan="5" style="text-align: center; padding: 20px;">
+            <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}" 
+                    hx-target="closest tr" 
+                    hx-swap="outerHTML">
+                Load More Players...
+            </button>
+        </td>
+    </tr>
+    {{end}}
+{{end}}
