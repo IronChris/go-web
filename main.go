@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	//"weak"
 	//	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+
 	//"strings"
 
 	"embed"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -22,7 +25,15 @@ type Player struct {
 }
 
 type SearchResponse struct {
-	Players    []Player
+	Headers    []string         // Add this
+	Rows       []map[string]any // Changed from []Player to []map[string]any
+	NextOffset int
+	Query      string
+}
+
+type DynamicSearchResponse struct {
+	Headers    []string
+	Rows       []map[string]any
 	NextOffset int
 	Query      string
 }
@@ -30,32 +41,74 @@ type SearchResponse struct {
 //go:embed web/templates/*.html
 var templateFS embed.FS
 
-func getPlayers(dbpool *pgxpool.Pool, search string, offset int) []Player {
-	query := `SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
-              FROM fide_players 
-              WHERE "Name" ILIKE $1 
-              ORDER BY 3 DESC 
-              LIMIT 20 OFFSET $2`
+func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.ResponseWriter, queryTerm string, offset int, templateName string) {
+	// The "Dynamic" SQL
+	sql := `SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
+            FROM fide_players 
+            WHERE "Name" ILIKE $1 
+            ORDER BY 3 DESC 
+            LIMIT 20 OFFSET $2`
 
-	rows, err := dbpool.Query(context.Background(), query, search, offset)
+	// Add wildcards for the DB call
+	headers, rows, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset)
 	if err != nil {
 		log.Println("Query Error:", err)
-		return nil // Return nil so the app doesn't crash
+		http.Error(w, "Database error", 500)
+		return
+	}
+
+	data := SearchResponse{
+		Headers:    headers,
+		Rows:       rows,
+		NextOffset: offset + 20,
+		Query:      queryTerm,
+	}
+
+	err = tmpl.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		log.Println("Template Error:", err)
+	}
+}
+
+func getDynamicPlayers(dbpool *pgxpool.Pool, sql string, args ...any) ([]string, []map[string]any, error) {
+	rows, err := dbpool.Query(context.Background(), sql, args...)
+	if err != nil {
+		return nil, nil, err
 	}
 	defer rows.Close()
 
-	var searchResults []Player
-	for rows.Next() {
-		var p Player
-		if err := rows.Scan(&p.Bday, &p.Name, &p.DEC25, &p.Fed, &p.Tit); err != nil {
-			log.Println("Scan Error:", err)
-			continue
-		}
-		searchResults = append(searchResults, p)
+	// Extract column names from the result set
+	fieldDescriptions := rows.FieldDescriptions()
+	headers := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		headers[i] = string(fd.Name)
 	}
-	return searchResults
+
+	var results []map[string]any
+	for rows.Next() {
+		// values, err := rows.Values() returns []any for the current row
+		values, err := rows.Values()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Map each column name to its corresponding value
+		rowMap := make(map[string]any)
+		for i, colName := range headers {
+			rowMap[colName] = values[i]
+		}
+		results = append(results, rowMap)
+	}
+
+	return headers, results, nil
 }
+
 func main() {
+
+	// Serve static files from the "static" directory
+	fs := http.FileServer(http.Dir("web/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
 	connStr := "postgres://postgres:postgres@192.168.178.120:5432/test"
 	//connStr := "postgres://postgres:postgres@localhost:5432/test"
 	dbpool, err := pgxpool.New(context.Background(), connStr)
@@ -68,39 +121,23 @@ func main() {
 	tmpl := template.Must(template.ParseFS(templateFS, "web/templates/*.html"))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Initialize the struct with an empty slice so len() doesn't crash
-		initialData := SearchResponse{
-			Players: []Player{},
-		}
-
-		err = tmpl.ExecuteTemplate(w, "index.html", initialData)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		// Offset 0, empty search (%), renders index.html
+		handlePlayersRequest(dbpool, tmpl, w, "", 0, "index.html")
 	})
+
 	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		// 1. Get the search term from POST or URL
 		query := r.FormValue("search")
 
-		// Add this line to allow partial matches
-		searchWildcard := "%" + query + "%"
-
+		// 2. Get the offset from the URL (for Load More)
 		offsetStr := r.URL.Query().Get("offset")
 		offset, _ := strconv.Atoi(offsetStr)
-		if offsetStr == "" {
-			offset = 0
-		}
 
-		// Use searchWildcard instead of query
-		players := getPlayers(dbpool, searchWildcard, offset)
+		// IMPORTANT: When HTMX sends a POST from the search box,
+		// we want to return the WHOLE table (Headers + Rows).
+		// When HTMX sends a GET from 'Load More', we only want the rows.
 
-		data := SearchResponse{
-			Players:    players,
-			NextOffset: offset + 20,
-			Query:      query, // Keep the clean query for the button URL
-		}
-
-		tmpl.ExecuteTemplate(w, "table.html", data)
+		handlePlayersRequest(dbpool, tmpl, w, query, offset, "table.html")
 	})
 
 	log.Println("Server starting on :8080...")
