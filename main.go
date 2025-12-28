@@ -42,6 +42,7 @@ type SearchResponse struct {
 	CurrentDir  string
 	CurrentFed  string   // New
 	Federations []string // New: List for the dropdown
+	TotalCount  int
 }
 
 //go:embed web/templates/*.html
@@ -59,11 +60,11 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 		"B-day": `"B-day"`,
 	}
 
-	query := r.FormValue("search") // HTMX hx-post uses FormValue
-	if query == "" {
-		query = r.URL.Query().Get("search") // Load More and Sorting use URL Query
-	}
-
+	/*	query := r.FormValue("search") // HTMX hx-post uses FormValue
+		if query == "" {
+			query = r.URL.Query().Get("search") // Load More and Sorting use URL Query
+		}
+	*/
 	dbColumn, ok := allowedSorts[sortCol]
 	if !ok {
 		dbColumn = `"DEC25"`
@@ -79,16 +80,17 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 
 	// Build the base query
 	sql := fmt.Sprintf(`
-    SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
+    SELECT "B-day", "Name", "DEC25", "Fed", "Tit", COUNT(*) OVER() as total_count
     FROM fide_players 
     WHERE "Name" ILIKE $1 
     AND ($3 = '' OR "Fed" = $3) 
     ORDER BY %s %s 
     LIMIT 20 OFFSET $2`, dbColumn, sortDir)
 
-	// Pass 'fed' as the third argument ($3)
-	headers, rows, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset, fed)
-
+	// 2. Your function call MUST match the placeholders ($1, $2, $3):
+	// $1 = name search, $2 = offset, $3 = fed
+	headers, rows, totalCount, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset, fed)
+	// Inside handlePlayersRequest
 	if err != nil {
 		log.Println("Query Error:", err)
 		http.Error(w, "Database error", 500)
@@ -98,6 +100,7 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 	data := SearchResponse{
 		Headers:     headers,
 		Rows:        rows,
+		TotalCount:  totalCount,
 		NextOffset:  offset + 20,
 		Query:       queryTerm,
 		CurrentSort: sortCol,
@@ -129,39 +132,59 @@ func getFederations(db *pgxpool.Pool) []string {
 	return feds
 }
 
-func getDynamicPlayers(dbpool *pgxpool.Pool, sql string, args ...any) ([]string, []map[string]any, error) {
+func getDynamicPlayers(dbpool *pgxpool.Pool, sql string, args ...interface{}) ([]string, []map[string]any, int, error) {
 	rows, err := dbpool.Query(context.Background(), sql, args...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	defer rows.Close()
 
-	// Extract column names from the result set
 	fieldDescriptions := rows.FieldDescriptions()
-	headers := make([]string, len(fieldDescriptions))
-	for i, fd := range fieldDescriptions {
-		headers[i] = string(fd.Name)
+	var columns []string
+	for _, fd := range fieldDescriptions {
+		columns = append(columns, string(fd.Name))
 	}
 
-	var results []map[string]any
+	var resultRows []map[string]any
+	totalCount := 0
+
 	for rows.Next() {
-		// values, err := rows.Values() returns []any for the current row
 		values, err := rows.Values()
 		if err != nil {
-			return nil, nil, err
+			log.Println("scan erroe", err)
+			return nil, nil, 0, err
 		}
 
-		// Map each column name to its corresponding value
 		rowMap := make(map[string]any)
-		for i, colName := range headers {
+		for i, colName := range columns {
+			if colName == "total_count" {
+				// Window function returns int64 in pgx
+				if v, ok := values[i].(int64); ok {
+					totalCount = int(v)
+				}
+				continue
+			}
 			rowMap[colName] = values[i]
 		}
-		results = append(results, rowMap)
+		resultRows = append(resultRows, rowMap)
 	}
 
-	return headers, results, nil
-}
+	// FIX: Properly build the display headers by excluding total_count
+	var displayHeaders []string
+	for _, h := range columns {
+		if h != "total_count" {
+			displayHeaders = append(displayHeaders, h) // Added 'h' here!
+		}
+	}
 
+	// ... existing loop ...
+	fmt.Printf("DEBUG: Headers: %v\n", displayHeaders)
+	if len(resultRows) > 0 {
+		fmt.Printf("DEBUG: Sample Row: %v\n", resultRows[0])
+	}
+
+	return displayHeaders, resultRows, totalCount, nil
+}
 func main() {
 
 	// Serve static files from the "static" directory
@@ -191,11 +214,14 @@ func main() {
 
 	// The Search Handler
 	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		query := r.FormValue("search")
+		// r.FormValue captures BOTH the typing (POST) and the Sort/Load More (GET)
+		searchTerm := r.FormValue("search")
+
 		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-		// Added 'r' at the end
-		handlePlayersRequest(dbpool, tmpl, w, query, offset, "table.html", r)
+
+		handlePlayersRequest(dbpool, tmpl, w, searchTerm, offset, "table.html", r)
 	})
+
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

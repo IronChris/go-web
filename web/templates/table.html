@@ -1,37 +1,56 @@
-{{/* table.html */}}
-<thead>
-    <tr>
-        {{range .Headers}}
-            {{$dir := "DESC"}}
-            {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}{{$dir = "ASC"}}{{end}}{{end}}
-            <th hx-get="/search?search={{$.Query}}&sort={{.}}&dir={{$dir}}" 
-                hx-target="#results-table" 
-		hx-include="[name='fed']"
-                style="cursor:pointer;">
-                {{.}} {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}▼{{else}}▲{{end}}{{else}}↕{{end}}
-            </th>
+<table id="results-table">
+    <thead>
+        <tr>
+            {{range $h := .Headers}}
+                {{/* 1. Calculate the next direction */}}
+                {{$nextDir := "DESC"}}
+                {{if eq $.CurrentSort $h}}
+                    {{if eq $.CurrentDir "DESC"}}{{$nextDir = "ASC"}}{{end}}
+                {{end}}
+
+                <th hx-get="/search?search={{$.Query}}&sort={{$h}}&dir={{$nextDir}}&fed={{$.CurrentFed}}" 
+                    hx-target="#table-results" 
+                    style="cursor:pointer; user-select: none;">
+                    
+                    {{$h}}
+
+                    {{/* 2. Show arrow ONLY if this column is being sorted */}}
+                    {{if eq $.CurrentSort $h}}
+                        {{if eq $.CurrentDir "ASC"}} ▲ {{else}} ▼ {{end}}
+                    {{else}}
+                        <span style="color: #ccc; font-size: 0.8em;"> ↕ </span>
+                    {{end}}
+                </th>
+            {{end}}
+        </tr>
+    </thead>
+    <tbody>
+        {{range $row := .Rows}}
+            <tr>
+                {{range $h := $.Headers}}
+                    <td>{{index $row $h}}</td>
+                {{end}}
+            </tr>
+        {{else}}
+            <tr><td colspan="5">No results found</td></tr>
         {{end}}
-    </tr>
-</thead>
-<tbody>
-    {{range $row := .Rows}}
-    <tr>
-        {{range $col := $.Headers}}
-            <td>{{index $row $col}}</td>
+
+        {{/* Load More Row */}}
+        {{if gt .TotalCount .NextOffset}}
+        <tr id="load-more-row">
+            <td colspan="5" style="text-align:center;">
+                <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}&sort={{.CurrentSort}}&dir={{.CurrentDir}}&fed={{.CurrentFed}}" 
+                        hx-target="#load-more-row" 
+                        hx-swap="outerHTML">
+                    Load More...
+                </button>
+            </td>
+        </tr>
         {{end}}
-    </tr>
-    {{end}}
-    
-    {{/* Load More Button */}}
-    {{if eq (len .Rows) 20}}
-    <tr>
-        <td colspan="100%">
-            <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}&sort={{.CurrentSort}}&dir={{.CurrentDir}}" 
-                    hx-target="closest tr" 
-                    hx-swap="outerHTML">
-                Load More...
-            </button>
-        </td>
-    </tr>
-    {{end}}
-</tbody>
+    </tbody>
+</table>
+
+{{/* Update count OOB */}}
+<span id="result-count" hx-swap-oob="true">
+    Found {{.TotalCount}} players
+</span>
