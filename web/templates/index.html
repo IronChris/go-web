@@ -7,20 +7,28 @@
     <link rel="stylesheet" href="/static/css/style.css">
    </head>
 <body>
-   <div class="container">
-    <h1>FIDE Player Search</h1>
+	<div class="container">
+    		<h1>FIDE Player Search</h1>
     
-    <input type="text" name="search" 
+    	<input type="text" name="search" 
            hx-post="/search" 
            hx-target="#results-table" 
            hx-trigger="keyup changed delay:300ms"
+           {{/* These ensure the search "remembers" the current sort */}}
+           hx-include="[name='sort'], [name='dir']" 
            placeholder="Search players...">
-    
-    <div id="table-results">
-        <table id="results-table">
-            {{template "table.html" .}}
-        </table>
-    </div>
-</div></body></html>
+
+    	{{/* Hidden inputs to store state for HTMX search */}}
+    	<input type="hidden" name="sort" value="{{.CurrentSort}}">
+    	<input type="hidden" name="dir" value="{{.CurrentDir}}">
+
+    		<div id="table-results">
+        		<table id="results-table">
+            		{{template "table.html" .}}
+        		</table>
+    		</div>
+	</div>
+ </body>
+</html>
 
 

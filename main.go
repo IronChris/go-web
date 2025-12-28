@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	//"weak"
-	//	"fmt"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -24,13 +24,6 @@ type Player struct {
 	Tit   string
 }
 
-type SearchResponse struct {
-	Headers    []string         // Add this
-	Rows       []map[string]any // Changed from []Player to []map[string]any
-	NextOffset int
-	Query      string
-}
-
 type DynamicSearchResponse struct {
 	Headers    []string
 	Rows       []map[string]any
@@ -38,18 +31,51 @@ type DynamicSearchResponse struct {
 	Query      string
 }
 
+type SearchResponse struct {
+	Headers     []string
+	Rows        []map[string]any
+	NextOffset  int
+	Query       string
+	CurrentSort string
+	CurrentDir  string
+} // Now
+
 //go:embed web/templates/*.html
 var templateFS embed.FS
 
-func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.ResponseWriter, queryTerm string, offset int, templateName string) {
-	// The "Dynamic" SQL
-	sql := `SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
-            FROM fide_players 
-            WHERE "Name" ILIKE $1 
-            ORDER BY 3 DESC 
-            LIMIT 20 OFFSET $2`
+func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.ResponseWriter, queryTerm string, offset int, templateName string, r *http.Request) {
+	sortCol := r.URL.Query().Get("sort")
+	sortDir := r.URL.Query().Get("dir")
 
-	// Add wildcards for the DB call
+	allowedSorts := map[string]string{
+		"Name":  `"Name"`,
+		"Fed":   `"Fed"`,
+		"Tit":   `"Tit"`,
+		"DEC25": `"DEC25"`,
+		"B-day": `"B-day"`,
+	}
+
+	query := r.FormValue("search") // HTMX hx-post uses FormValue
+	if query == "" {
+		query = r.URL.Query().Get("search") // Load More and Sorting use URL Query
+	}
+
+	dbColumn, ok := allowedSorts[sortCol]
+	if !ok {
+		dbColumn = `"DEC25"`
+	}
+	if sortDir != "ASC" {
+		sortDir = "DESC"
+	}
+
+	sql := fmt.Sprintf(`
+        SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
+        FROM fide_players 
+        WHERE "Name" ILIKE $1 
+        ORDER BY %s %s 
+        LIMIT 20 OFFSET $2`, dbColumn, sortDir)
+
+	// FIX: Ensure you use the variables returned here
 	headers, rows, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset)
 	if err != nil {
 		log.Println("Query Error:", err)
@@ -58,12 +84,15 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 	}
 
 	data := SearchResponse{
-		Headers:    headers,
-		Rows:       rows,
-		NextOffset: offset + 20,
-		Query:      queryTerm,
+		Headers:     headers,
+		Rows:        rows,
+		NextOffset:  offset + 20,
+		Query:       queryTerm,
+		CurrentSort: sortCol,
+		CurrentDir:  sortDir,
 	}
 
+	//'data' is defined and can be used
 	err = tmpl.ExecuteTemplate(w, templateName, data)
 	if err != nil {
 		log.Println("Template Error:", err)
@@ -120,26 +149,19 @@ func main() {
 	//tmpl := template.Must(template.ParseGlob("web/templates/*.html"))
 	tmpl := template.Must(template.ParseFS(templateFS, "web/templates/*.html"))
 
+	// The Root Handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Offset 0, empty search (%), renders index.html
-		handlePlayersRequest(dbpool, tmpl, w, "", 0, "index.html")
+		// Added 'r' at the end
+		handlePlayersRequest(dbpool, tmpl, w, "", 0, "index.html", r)
 	})
 
+	// The Search Handler
 	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		// 1. Get the search term from POST or URL
 		query := r.FormValue("search")
-
-		// 2. Get the offset from the URL (for Load More)
-		offsetStr := r.URL.Query().Get("offset")
-		offset, _ := strconv.Atoi(offsetStr)
-
-		// IMPORTANT: When HTMX sends a POST from the search box,
-		// we want to return the WHOLE table (Headers + Rows).
-		// When HTMX sends a GET from 'Load More', we only want the rows.
-
-		handlePlayersRequest(dbpool, tmpl, w, query, offset, "table.html")
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+		// Added 'r' at the end
+		handlePlayersRequest(dbpool, tmpl, w, query, offset, "table.html", r)
 	})
-
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

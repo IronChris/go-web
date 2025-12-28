@@ -1,37 +1,36 @@
-{{/* ONLY show headers if we are on the first page of results */}}
-{{if eq .NextOffset 20}}
+{{/* table.html */}}
 <thead>
     <tr>
         {{range .Headers}}
-            <th>{{.}}</th>
+            {{$dir := "DESC"}}
+            {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}{{$dir = "ASC"}}{{end}}{{end}}
+            <th hx-get="/search?search={{$.Query}}&sort={{.}}&dir={{$dir}}" 
+                hx-target="#results-table" 
+                style="cursor:pointer;">
+                {{.}} {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}▼{{else}}▲{{end}}{{else}}↕{{end}}
+            </th>
         {{end}}
     </tr>
 </thead>
-{{end}}
-
-{{/* Always show the rows */}}
-{{range $row := .Rows}}
-<tr>
-    {{range $col := $.Headers}}
-        <td>{{index $row $col}}</td>
+<tbody>
+    {{range $row := .Rows}}
+    <tr>
+        {{range $col := $.Headers}}
+            <td>{{index $row $col}}</td>
+        {{end}}
+    </tr>
     {{end}}
-</tr>
-{{else}}
-    {{/* Only show "No players" if it's the first page and empty */}}
-    {{if eq .NextOffset 20}}
-    <tr><td colspan="100%">No players found.</td></tr>
+    
+    {{/* Load More Button */}}
+    {{if eq (len .Rows) 20}}
+    <tr>
+        <td colspan="100%">
+            <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}&sort={{.CurrentSort}}&dir={{.CurrentDir}}" 
+                    hx-target="closest tr" 
+                    hx-swap="outerHTML">
+                Load More...
+            </button>
+        </td>
+    </tr>
     {{end}}
-{{end}}
-
-{{/* The Load More button */}}
-{{if eq (len .Rows) 20}}
-<tr>
-    <td colspan="100%" style="text-align: center;">
-        <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}" 
-                hx-target="closest tr" 
-                hx-swap="outerHTML">
-            Load More...
-        </button>
-    </td>
-</tr>
-{{end}}
+</tbody>
