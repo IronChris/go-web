@@ -16,6 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var globalFederations []string
+
 type Player struct {
 	Bday  int
 	Name  string
@@ -38,7 +40,9 @@ type SearchResponse struct {
 	Query       string
 	CurrentSort string
 	CurrentDir  string
-} // Now
+	CurrentFed  string   // New
+	Federations []string // New: List for the dropdown
+}
 
 //go:embed web/templates/*.html
 var templateFS embed.FS
@@ -68,15 +72,23 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 		sortDir = "DESC"
 	}
 
-	sql := fmt.Sprintf(`
-        SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
-        FROM fide_players 
-        WHERE "Name" ILIKE $1 
-        ORDER BY %s %s 
-        LIMIT 20 OFFSET $2`, dbColumn, sortDir)
+	fed := r.FormValue("fed")
+	if fed == "" {
+		fed = r.URL.Query().Get("fed")
+	}
 
-	// FIX: Ensure you use the variables returned here
-	headers, rows, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset)
+	// Build the base query
+	sql := fmt.Sprintf(`
+    SELECT "B-day", "Name", "DEC25", "Fed", "Tit" 
+    FROM fide_players 
+    WHERE "Name" ILIKE $1 
+    AND ($3 = '' OR "Fed" = $3) 
+    ORDER BY %s %s 
+    LIMIT 20 OFFSET $2`, dbColumn, sortDir)
+
+	// Pass 'fed' as the third argument ($3)
+	headers, rows, err := getDynamicPlayers(dbpool, sql, "%"+queryTerm+"%", offset, fed)
+
 	if err != nil {
 		log.Println("Query Error:", err)
 		http.Error(w, "Database error", 500)
@@ -90,13 +102,31 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 		Query:       queryTerm,
 		CurrentSort: sortCol,
 		CurrentDir:  sortDir,
+		CurrentFed:  fed,
+		Federations: globalFederations, // Pass the global list here
 	}
-
 	//'data' is defined and can be used
 	err = tmpl.ExecuteTemplate(w, templateName, data)
 	if err != nil {
 		log.Println("Template Error:", err)
 	}
+}
+
+func getFederations(db *pgxpool.Pool) []string {
+	ctx := context.Background()
+	rows, err := db.Query(ctx, `SELECT DISTINCT "Fed" FROM fide_players WHERE "Fed" IS NOT NULL ORDER BY "Fed" ASC`)
+	if err != nil {
+		return []string{}
+	}
+	defer rows.Close()
+
+	var feds []string
+	for rows.Next() {
+		var f string
+		rows.Scan(&f)
+		feds = append(feds, f)
+	}
+	return feds
 }
 
 func getDynamicPlayers(dbpool *pgxpool.Pool, sql string, args ...any) ([]string, []map[string]any, error) {
@@ -144,6 +174,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
+
+	// Fetch this once when the server starts
+	globalFederations = getFederations(dbpool)
+
 	defer dbpool.Close()
 
 	//tmpl := template.Must(template.ParseGlob("web/templates/*.html"))

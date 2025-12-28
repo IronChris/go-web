@@ -8,7 +8,35 @@
     --hover: #2d3748;          /* Row hover color */
 }
 
-body {
+/* The base state of the loader */
+.loader {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #ccc;
+    border-bottom-color: #3498db; /* Blue spinner */
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: middle;
+    
+    /* Hide it by default */
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+/* When HTMX is working, it adds .htmx-request to the indicator */
+.htmx-indicator.htmx-request {
+    opacity: 1;
+}
+
+/* Animation */
+.loader {
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}body {
     background-color: var(--bg-color);
     color: var(--text-main);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;

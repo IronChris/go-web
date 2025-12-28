@@ -7,16 +7,42 @@
     <link rel="stylesheet" href="/static/css/style.css">
    </head>
 <body>
+
 	<div class="container">
     		<h1>FIDE Player Search</h1>
-    
-    	<input type="text" name="search" 
+   
+	<span id="spinner" class="htmx-indicator loader"></span>
+ 
+    	<input type="text" 
+		id="search-input"
+	name="search" 
            hx-post="/search" 
            hx-target="#results-table" 
            hx-trigger="keyup changed delay:300ms"
            {{/* These ensure the search "remembers" the current sort */}}
-           hx-include="[name='sort'], [name='dir']" 
-           placeholder="Search players...">
+           hx-include="[name='sort'], [name='dir'],[name='fed']" 
+           placeholder="Search players..."
+	   hx-indicator="#spinner">
+   	   	
+
+	<select id="fed-select" name="fed" 
+        hx-get="/search" 
+        hx-target="#results-table" 
+        hx-indicator="#spinner"
+        hx-include="[name='search'], [name='sort'], [name='dir']"
+        class="fed-selector">    		<option value="">All Countries</option>
+    			{{range .Federations}}
+        	<option value="{{.}}" {{if eq . $.CurrentFed}}selected{{end}}>{{.}}</option>
+    			{{end}}
+	</select>
+
+
+	<button hx-get="/search" 
+            hx-target="#results-table"
+            onclick="document.getElementById('search-input').value=''; document.getElementById('fed-select').value='';"
+            class="btn-reset">
+        Clear Filters
+    </button>
 
     	{{/* Hidden inputs to store state for HTMX search */}}
     	<input type="hidden" name="sort" value="{{.CurrentSort}}">

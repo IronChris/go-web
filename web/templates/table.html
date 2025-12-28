@@ -6,6 +6,7 @@
             {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}{{$dir = "ASC"}}{{end}}{{end}}
             <th hx-get="/search?search={{$.Query}}&sort={{.}}&dir={{$dir}}" 
                 hx-target="#results-table" 
+		hx-include="[name='fed']"
                 style="cursor:pointer;">
                 {{.}} {{if eq $.CurrentSort .}}{{if eq $.CurrentDir "DESC"}}▼{{else}}▲{{end}}{{else}}↕{{end}}
             </th>
