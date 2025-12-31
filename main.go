@@ -280,6 +280,8 @@ func main() {
 
 	http.HandleFunc("/htmxcs", markdownHandler)
 	http.HandleFunc("/nvimcs", markdownHandler)
+	http.HandleFunc("/nvimcs2", markdownHandler)
+	http.HandleFunc("/nvimcs3", markdownHandler)
 
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
