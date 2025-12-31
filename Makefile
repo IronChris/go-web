@@ -20,7 +20,8 @@ stop:
 upload:
 	@echo "Uploading..."
 	scp $(BINARY_NAME) $(PI_TARGET):$(PI_PATH)/
-	scp -r web/static $(PI_TARGET):$(PI_PATH)/
+	scp -r ./web $(PI_TARGET):$(PI_PATH)/
+	scp -r ./web/docs $(PI_TARGET):$(PI_PATH)/
 start:
 	@echo "Starting service..."
 	ssh -t $(PI_TARGET) "sudo systemctl start fide.service"

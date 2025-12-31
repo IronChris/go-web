@@ -2,18 +2,16 @@ package main
 
 import (
 	"context"
-	//"weak"
+	"embed"
 	"fmt"
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/parser"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
-
-	//"strings"
-
-	"embed"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var globalFederations []string
@@ -47,6 +45,48 @@ type SearchResponse struct {
 
 //go:embed web/templates/*.html
 var templateFS embed.FS
+
+//go:embed web/docs/*.md
+var markdownFS embed.FS
+
+func markdownHandler(w http.ResponseWriter, r *http.Request) {
+	md, err := os.ReadFile("web/docs/htmxcs.md")
+	if err != nil {
+		http.Error(w, "Markdown-Datei nicht gefunden", http.StatusNotFound)
+		return
+	}
+
+	// 1. Convert Markdown to HTML bytes
+	extensions := parser.CommonExtensions | parser.AutoHeadingIDs
+	p := parser.NewWithExtensions(extensions)
+	htmlBytes := markdown.ToHTML(md, p, nil)
+
+	// 2. Convert to template.HTML so Go doesn't escape it
+	data := struct {
+		Content template.HTML
+	}{
+		Content: template.HTML(htmlBytes),
+	}
+
+	// 3. Execute your layout template
+	t, err := template.ParseFiles("web/templates/md.html") // Adjust path to your md.html
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = t.Execute(w, data)
+	if err != nil {
+		log.Println("Template Error:", err)
+	}
+}
+
+/*	html := markdown.ToHTML(mdContent, nil, nil)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	w.Write(html)
+
+*/
 
 func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.ResponseWriter, queryTerm string, offset int, templateName string, r *http.Request) {
 	sortCol := r.URL.Query().Get("sort")
@@ -221,6 +261,8 @@ func main() {
 
 		handlePlayersRequest(dbpool, tmpl, w, searchTerm, offset, "table.html", r)
 	})
+
+	http.HandleFunc("/htmx", markdownHandler)
 
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -1,58 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Go + HTMX Postgres</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=123">
-</head>
-<body>
+    <link rel="stylesheet" href="/static/css/style.css?v=123" />
+  </head>
+  <body>
     <div class="container">
-        <h1>FIDE Player Search</h1>
-        <div class="controls">
-            <input type="text" 
-                   id="search-input"
-                   name="search" 
-                   hx-get="/search" 
-                   hx-target="#results-table" 
-                   hx-trigger="keyup changed delay:300ms"
-                   hx-include="[name='sort'], [name='dir'], [name='fed']" 
-                   hx-indicator="#spinner"
-                   placeholder="Search players...">
+      <h1>FIDE Player Search</h1>
+      <div class="controls">
+        <input
+          type="text"
+          id="search-input"
+          name="search"
+          hx-get="/search"
+          hx-target="#results-table"
+          hx-trigger="keyup changed delay:300ms"
+          hx-include="[name='sort'], [name='dir'], [name='fed']"
+          hx-indicator="#spinner"
+          placeholder="Search players..."
+        />
 
-            <select id="fed-select" name="fed" 
-                    hx-get="/search" 
-                    hx-target="#results-table" 
-                    hx-indicator="#spinner"
-                    hx-include="[name='search'], [name='sort'], [name='dir']"
-                    class="fed-selector">
-                <option value="">All Countries</option>
-                {{range .Federations}}
-                    <option value="{{.}}" {{if eq . $.CurrentFed}}selected{{end}}>{{.}}</option>
-                {{end}}
-            </select>
+        <select
+          id="fed-select"
+          name="fed"
+          hx-get="/search"
+          hx-target="#results-table"
+          hx-indicator="#spinner"
+          hx-include="[name='search'], [name='sort'], [name='dir']"
+          class="fed-selector"
+        >
+          <option value="">All Countries</option>
+          {{range .Federations}}
+          <option value="{{.}}" {{if eq . $.CurrentFed}}selected{{end}}>
+            {{.}}
+          </option>
+          {{end}}
+        </select>
 
-            <button hx-get="/search" 
-                    hx-target="#results-table"
-                    onclick="document.getElementById('search-input').value=''; document.getElementById('fed-select').value='';"
-                    class="btn-reset">
-                Clear Filters
-            </button>
-            
-            <span id="spinner" class="htmx-indicator loader"></span>
-            <span id="result-count">
-                {{if .TotalCount}} Found {{.TotalCount}} players {{end}}
-            </span>
-        </div>
+        <button
+          hx-get="/search"
+          hx-target="#results-table"
+          onclick="
+            document.getElementById('search-input').value = '';
+            document.getElementById('fed-select').value = '';
+          "
+          class="btn-reset"
+        >
+          Clear Filters
+        </button>
 
-        {{/* Hidden inputs to keep track of sorting state */}}
-        <input type="hidden" name="sort" value="{{.CurrentSort}}">
-        <input type="hidden" name="dir" value="{{.CurrentDir}}">
+        <span id="spinner" class="htmx-indicator loader"></span>
+        <span id="result-count">
+          {{if .TotalCount}} Found {{.TotalCount}} players {{end}}
+        </span>
+      </div>
 
-        <div id="table-results">
-                {{template "table.html" .}}
-        </div>
+      {{/* Hidden inputs to keep track of sorting state */}}
+      <input type="hidden" name="sort" value="{{.CurrentSort}}" />
+      <input type="hidden" name="dir" value="{{.CurrentDir}}" />
+
+      <div id="table-results">{{template "table.html" .}}</div>
     </div>
-</body>
+  </body>
 </html>

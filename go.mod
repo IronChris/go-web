@@ -2,7 +2,10 @@ module test
 
 go 1.25.5
 
-require github.com/jackc/pgx/v5 v5.7.6
+require (
+	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
+	github.com/jackc/pgx/v5 v5.7.6
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

@@ -1,150 +1,161 @@
 :root {
-    --bg-color: #0f172a;       /* Deep navy background */
-    --card-bg: #1e293b;        /* Slightly lighter navy for table */
-    --text-main: #f8fafc;      /* Soft white */
-    --text-dim: #94a3b8;       /* Muted blue-grey for secondary text */
-    --accent: #38bdf8;         /* Bright blue for buttons/links */
-    --border: #334155;         /* Subtle border color */
-    --hover: #2d3748;          /* Row hover color */
+  --bg-color: #0f172a; /* Deep navy background */
+  --card-bg: #1e293b; /* Slightly lighter navy for table */
+  --text-main: #f8fafc; /* Soft white */
+  --text-dim: #94a3b8; /* Muted blue-grey for secondary text */
+  --accent: #38bdf8; /* Bright blue for buttons/links */
+  --border: #334155; /* Subtle border color */
+  --hover: #2d3748; /* Row hover color */
 }
 
 /* The base state of the loader */
 .loader {
-    width: 24px;
-    height: 24px;
-    border: 3px solid #ccc;
-    border-bottom-color: #3498db; /* Blue spinner */
-    border-radius: 50%;
-    display: inline-block;
-    vertical-align: middle;
-    
-    /* Hide it by default */
-    opacity: 0;
-    transition: opacity 0.2s;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #ccc;
+  border-bottom-color: #3498db; /* Blue spinner */
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+
+  /* Hide it by default */
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
 /* When HTMX is working, it adds .htmx-request to the indicator */
 .htmx-indicator.htmx-request {
-    opacity: 0.5;
+  opacity: 0.5;
 }
 
 /* Animation */
 .loader {
-    animation: rotation 1s linear infinite;
+  animation: rotation 1s linear infinite;
 }
 
 @keyframes rotation {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    line-height: 1.5;
-    margin: 0;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  line-height: 1.5;
+  margin: 0;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Container for the search and table */
 .container {
-    width: 100%;
-    max-width: 1000px;
+  width: 100%;
+  max-width: 1000px;
 }
 
 input[type="text"] {
-    width: 100%;
-    background-color: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    color: white;
-    padding: 12px 16px;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.2s;
-    margin-bottom: 2rem;
+  width: 100%;
+  background-color: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: white;
+  padding: 12px 16px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 2rem;
 }
 
 input[type="text"]:focus {
-    border-color: var(--accent);
+  border-color: var(--accent);
 }
 
 table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background-color: var(--card-bg);
-    border-radius: 12px;
-    overflow: hidden; /* Rounds the table corners */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden; /* Rounds the table corners */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 th {
-    background-color: #0f172a;
-    color: var(--accent);
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.05em;
-    padding: 16px;
-    text-align: left;
-    border-bottom: 2px solid var(--border);
-    position: sticky;
-    top: 0;
+  background-color: #0f172a;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 16px;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
 }
 
 td {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.95rem;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
 }
 
 tr:last-child td {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 tr:hover {
-    background-color: var(--hover);
+  background-color: var(--hover);
 }
 
 button {
-    background-color: var(--accent);
-    color: #0f172a;
-    font-weight: 700;
-    border: none;
-    padding: 10px 24px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: transform 0.1s, background-color 0.2s;
+  background-color: var(--accent);
+  color: #0f172a;
+  font-weight: 700;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    transform 0.1s,
+    background-color 0.2s;
 }
 
 button:hover {
-    background-color: #7dd3fc;
-    transform: translateY(-1px);
+  background-color: #7dd3fc;
+  transform: translateY(-1px);
 }
 
 button:active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 /* Nice touch: Style the scrollbar for the dark theme */
 ::-webkit-scrollbar {
-    width: 10px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
-    background: var(--bg-color);
+  background: var(--bg-color);
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 5px;
+  background: var(--border);
+  border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-dim);
+  background: var(--text-dim);
 }
 
-td:nth-child(5) { 
-    font-weight: bold;
-    color: var(--accent);
-    text-align: center;
+td:nth-child(5) {
+  font-weight: bold;
+  color: var(--accent);
+  text-align: center;
 }
