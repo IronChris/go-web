@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var globalFederations []string
@@ -50,7 +51,16 @@ var templateFS embed.FS
 var markdownFS embed.FS
 
 func markdownHandler(w http.ResponseWriter, r *http.Request) {
-	md, err := os.ReadFile("web/docs/htmxcs.md")
+	// Get filename from URL, e.g., /docs/cheatsheet
+	name := strings.TrimPrefix(r.URL.Path, "/docs/")
+
+	if name == "" {
+		name = "htmxcs"
+	} // default
+
+	path := fmt.Sprintf("web/docs/%s.md", name)
+	md, err := os.ReadFile(path)
+
 	if err != nil {
 		http.Error(w, "Markdown-Datei nicht gefunden", http.StatusNotFound)
 		return
@@ -148,10 +158,16 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 		CurrentFed:  fed,
 		Federations: globalFederations, // Pass the global list here
 	}
-	//'data' is defined and can be used
-	err = tmpl.ExecuteTemplate(w, templateName, data)
-	if err != nil {
-		log.Println("Template Error:", err)
+
+	if offset > 0 {
+		// 1. We are clicking "Load More" -> Send only <tr> tags
+		err = tmpl.ExecuteTemplate(w, "table-rows", data)
+	} else if r.Header.Get("HX-Request") == "true" {
+		// 2. We are typing in the search box -> Send only the <table> fragment
+		err = tmpl.ExecuteTemplate(w, "table.html", data)
+	} else {
+		// 3. This is the first visit to the site -> Send the full index.html
+		err = tmpl.ExecuteTemplate(w, "index.html", data)
 	}
 }
 
@@ -262,7 +278,8 @@ func main() {
 		handlePlayersRequest(dbpool, tmpl, w, searchTerm, offset, "table.html", r)
 	})
 
-	http.HandleFunc("/htmx", markdownHandler)
+	http.HandleFunc("/htmxcs", markdownHandler)
+	http.HandleFunc("/nvimcs", markdownHandler)
 
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))

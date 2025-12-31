@@ -1,56 +1,45 @@
-<table id="results-table">
-    <thead>
-        <tr>
-            {{range $h := .Headers}}
-                {{/* 1. Calculate the next direction */}}
-                {{$nextDir := "DESC"}}
-                {{if eq $.CurrentSort $h}}
-                    {{if eq $.CurrentDir "DESC"}}{{$nextDir = "ASC"}}{{end}}
-                {{end}}
-
-                <th hx-get="/search?search={{$.Query}}&sort={{$h}}&dir={{$nextDir}}&fed={{$.CurrentFed}}" 
-                    hx-target="#table-results" 
-                    style="cursor:pointer; user-select: none;">
-                    
-                    {{$h}}
-
-                    {{/* 2. Show arrow ONLY if this column is being sorted */}}
-                    {{if eq $.CurrentSort $h}}
-                        {{if eq $.CurrentDir "ASC"}} ▲ {{else}} ▼ {{end}}
-                    {{else}}
-                        <span style="color: #ccc; font-size: 0.8em;"> ↕ </span>
-                    {{end}}
-                </th>
-            {{end}}
-        </tr>
-    </thead>
-    <tbody>
-        {{range $row := .Rows}}
-            <tr>
-                {{range $h := $.Headers}}
-                    <td>{{index $row $h}}</td>
-                {{end}}
-            </tr>
-        {{else}}
-            <tr><td colspan="5">No results found</td></tr>
-        {{end}}
-
-        {{/* Load More Row */}}
-        {{if gt .TotalCount .NextOffset}}
-        <tr id="load-more-row">
-            <td colspan="5" style="text-align:center;">
-                <button hx-get="/search?search={{.Query}}&offset={{.NextOffset}}&sort={{.CurrentSort}}&dir={{.CurrentDir}}&fed={{.CurrentFed}}" 
-                        hx-target="#load-more-row" 
-                        hx-swap="outerHTML">
-                    Load More...
-                </button>
-            </td>
-        </tr>
-        {{end}}
-    </tbody>
+{{/* 1. The Main Table Shell (Only renders on offset 0) */}}
+<table id="results-table" class="fide-table">
+  <thead>
+    <tr>
+      {{range .Headers}}
+      <th>{{.}}</th>
+      {{end}}
+    </tr>
+  </thead>
+  <tbody id="table-body">
+    {{/* This calls the block below to fill the initial 20 rows */}}
+    {{template "table-rows" .}}
+  </tbody>
 </table>
 
-{{/* Update count OOB */}}
+{{/* 2. OOB Update for the result count in index.html */}}
 <span id="result-count" hx-swap-oob="true">
-    Found {{.TotalCount}} players
+  {{if .TotalCount}} Found {{.TotalCount}} players {{end}}
 </span>
+
+{{/* 3. THE ROW BLOCK (This is what Go sends for "Load More") */}}
+{{define "table-rows"}}
+  {{range $row := .Rows}}
+  <tr>
+    {{range $h := $.Headers}}
+    <td>{{index $row $h}}</td>
+    {{end}}
+  </tr>
+  {{end}}
+
+  {{/* The Load More Row replaces itself with new rows + a new button */}}
+  {{if gt .TotalCount .NextOffset}}
+  <tr id="load-more-row">
+    <td colspan="5" style="text-align: center">
+      <button
+        hx-get="/search?search={{.Query}}&offset={{.NextOffset}}&sort={{.CurrentSort}}&dir={{.CurrentDir}}&fed={{.CurrentFed}}"
+        hx-target="#load-more-row"
+        hx-swap="outerHTML"
+      >
+        Load More...
+      </button>
+    </td>
+  </tr>
+  {{end}}
+{{end}}

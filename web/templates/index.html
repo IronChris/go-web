@@ -16,7 +16,7 @@
           id="search-input"
           name="search"
           hx-get="/search"
-          hx-target="#results-table"
+          hx-target="#search-results"
           hx-trigger="keyup changed delay:300ms"
           hx-include="[name='sort'], [name='dir'], [name='fed']"
           hx-indicator="#spinner"
@@ -62,7 +62,7 @@
       <input type="hidden" name="sort" value="{{.CurrentSort}}" />
       <input type="hidden" name="dir" value="{{.CurrentDir}}" />
 
-      <div id="table-results">{{template "table.html" .}}</div>
+      <div id="search-results">{{template "table.html" .}}</div>
     </div>
   </body>
 </html>
