@@ -4,15 +4,16 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/parser"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/parser"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var globalFederations []string
