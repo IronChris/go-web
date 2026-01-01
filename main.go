@@ -92,13 +92,6 @@ func markdownHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*	html := markdown.ToHTML(mdContent, nil, nil)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	w.Write(html)
-
-*/
-
 func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.ResponseWriter, queryTerm string, offset int, templateName string, r *http.Request) {
 	sortCol := r.URL.Query().Get("sort")
 	sortDir := r.URL.Query().Get("dir")
@@ -111,11 +104,6 @@ func handlePlayersRequest(dbpool *pgxpool.Pool, tmpl *template.Template, w http.
 		"B-day": `"B-day"`,
 	}
 
-	/*	query := r.FormValue("search") // HTMX hx-post uses FormValue
-		if query == "" {
-			query = r.URL.Query().Get("search") // Load More and Sorting use URL Query
-		}
-	*/
 	dbColumn, ok := allowedSorts[sortCol]
 	if !ok {
 		dbColumn = `"DEC25"`
@@ -283,6 +271,7 @@ func main() {
 	http.HandleFunc("/nvimcs", markdownHandler)
 	http.HandleFunc("/nvimcs2", markdownHandler)
 	http.HandleFunc("/nvimcs3", markdownHandler)
+	http.HandleFunc("/WORKFLOW", markdownHandler)
 
 	log.Println("Server starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
